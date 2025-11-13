@@ -4,16 +4,7 @@
  */
 
 import { initializeApp } from 'firebase/app';
-// USE THIS IMPORT STATEMENT. It includes getAuth and the required aliases.
-import { 
-    getAuth, // <-- You are correct, this is essential.
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    sendPasswordResetEmail, 
-    signOut,
-    onAuthStateChanged as firebaseOnAuthStateChanged, // Renamed for our new function
-    User as FirebaseUser // Renamed to avoid type conflicts
-} from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, where, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { firebaseConfig } from './firebase.config';
@@ -122,33 +113,19 @@ export const login = async (email: string, password_param: string): Promise<User
     return userData;
 };
 
-// REPLACE your existing signup function with this one
-
-export const signup = async (name, email, password) => {
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // Create the user's profile in Firestore WITH a default role
-        await setDoc(doc(db, 'users', user.uid), {
-            name: name,
-            email: email,
-            role: 'Viewer' // <-- THIS IS THE CRITICAL FIX
-        });
-
-        // The onAuthStateChanged listener will handle the rest
-        return; 
-
-    } catch (error) {
-        console.error("Error during signup:", error);
-        // We can throw a more specific error message based on the error code
-        if (error.code === 'auth/email-already-in-use') {
-            throw new Error('Cette adresse e-mail est déjà utilisée.');
-        }
-        throw new Error("Une erreur s'est produite lors de l'inscription.");
+export const signup = async (name: string, email: string, password_param: string): Promise<User> => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password_param);
+    const user = userCredential.user;
+    if (!user) {
+        throw new Error("Could not create user account.");
     }
-};
 
+    const newUser: Omit<User, 'id' | 'email'> = { name, role: 'Viewer' }; // Default role for new signups
+    
+    await setDoc(doc(db, 'users', user.uid), newUser);
+    
+    return { id: user.uid, email, ...newUser };
+};
 
 export const recoverPassword = async (email: string): Promise<{ success: boolean }> => {
     await sendPasswordResetEmail(auth, email);
@@ -159,40 +136,6 @@ export const logout = async (): Promise<void> => {
     await signOut(auth);
     sessionStorage.removeItem(CURRENT_USER_KEY);
 };
-
-// PASTE THIS NEW FUNCTION INTO apiService.ts
-
-// This function listens for changes in the user's login state (login, logout)
-// DELETE the old onAuthStateChanged function and REPLACE it with this one.
-
-export const onAuthStateChanged = (callback: (user: User | null) => void) => {
-    // We use the renamed `firebaseOnAuthStateChanged` here
-    return firebaseOnAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-        if (firebaseUser) {
-            // User is signed in according to Firebase.
-            // Now, fetch their custom profile from your Firestore 'users' collection.
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists()) {
-                // The user profile exists in Firestore.
-                // Create the complete custom User object and pass it to the app.
-                const customUserData = { id: userDoc.id, ...userDoc.data() } as User;
-                callback(customUserData);
-            } else {
-                // This is a fallback. The user is authenticated but has no profile data.
-                // Treat them as logged out within the app.
-                console.warn("Authenticated user is missing Firestore profile:", firebaseUser.uid);
-                callback(null);
-            }
-        } else {
-            // User is signed out.
-            callback(null);
-        }
-    });
-};
-
-
 
 export const getCurrentUser = (): User | null => {
     const userJson = sessionStorage.getItem(CURRENT_USER_KEY);
@@ -457,60 +400,6 @@ export const getFileUrl = (file: UploadedFile): string => {
 };
 
 // Data Import
-// This code goes in src/apiService.ts
-
-export const importData = async (records: any[]) => {
-    if (!records || records.length === 0) {
-        throw new Error("Le fichier CSV est vide ou invalide.");
-    }
-
-    const batch = writeBatch(db);
-
-    // This is the CSV processing loop.
-    for (const record of records) {
-        // --- START OF VALIDATION FIX ---
-        const orderPart = record.OrderPart;
-        if (orderPart && orderPart !== 'Huisseries' && orderPart !== 'Portes') {
-            // If the value is invalid, we stop the entire import.
-            throw new Error(
-                `Ligne invalide : La valeur pour 'OrderPart' ('${orderPart}') n'est pas valide. Elle doit être 'Huisseries' ou 'Portes'.`
-            );
-        }
-        // --- END OF VALIDATION FIX ---
-
-        const customerId = record.CustomerID || record.CustomerName;
-        const siteId = record.SiteID || record.SiteName;
-        const orderId = record.OrderID;
-
-        if (!customerId || !siteId || !orderId) {
-            console.warn("Ligne ignorée en raison de données manquantes:", record);
-            continue;
-        }
-
-        const customerRef = doc(db, 'customers', customerId);
-        batch.set(customerRef, { name: record.CustomerName, notes: record.CustomerNotes || '' }, { merge: true });
-
-        const siteRef = doc(db, `customers/${customerId}/sites`, siteId);
-        batch.set(siteRef, { name: record.SiteName, generalInfo: record.SiteGeneralInfo || '' }, { merge: true });
-
-        const orderRef = doc(db, `customers/${customerId}/sites/${siteId}/orders`, orderId);
-        
-        const partData = {
-            number: record.PartNumber || 'N/A',
-            isSent: (record.Status || '').toLowerCase() === 'envoyée',
-            creationDate: new Date().toISOString(),
-            userName: record.UserName || 'Import',
-            notes: record.PartNotes || '',
-        };
-
-        const partName = record.PartName || 'Pièce inconnue';
-        
-        batch.set(orderRef, {
-            [orderPart]: {
-                [partName]: partData
-            }
-        }, { merge: true });
-    }
-
-    await batch.commit();
+export const importData = async (csvString: string): Promise<{customers: Customer[], users: User[]}> => {
+    throw new Error("Data import is a complex backend operation and is not supported in this version. Please contact support.");
 };

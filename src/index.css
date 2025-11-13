@@ -2290,3 +2290,127 @@ button:disabled {
       font-size: 3rem;
     }
 }
+/* --- Home Screen --- */
+.home-screen-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle, var(--bg-color) 0%, #111122 100%);
+}
+
+.home-screen-content {
+  background-color: var(--sidebar-bg);
+  padding: 3rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 800px;
+  text-align: center;
+}
+
+.home-logo {
+  height: 80px;
+  margin-bottom: 1.5rem;
+}
+
+.home-screen-content h1 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  font-size: 2.5rem;
+}
+
+.home-description {
+  color: var(--text-light);
+  font-size: 1.2rem;
+  margin-bottom: 3rem;
+}
+
+.home-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.feature-card {
+  background: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-light);
+  transform: translateY(-5px);
+}
+
+.feature-icon {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.feature-card h3 {
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.feature-card p {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.home-login-btn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.home-login-btn:hover {
+  filter: brightness(1.2);
+  box-shadow: var(--shadow-light);
+  transform: scale(1.05);
+}
+
+/* Responsive design for home screen */
+@media (max-width: 768px) {
+  .home-screen-content {
+      padding: 2rem 1.5rem;
+      margin: 1rem;
+  }
+  
+  .home-logo {
+      height: 60px;
+  }
+  
+  .home-screen-content h1 {
+      font-size: 2rem;
+  }
+  
+  .home-description {
+      font-size: 1.1rem;
+  }
+  
+  .home-features {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+  }
+  
+  .home-login-btn {
+      width: 100%;
+      padding: 1rem;
+  }
+}
