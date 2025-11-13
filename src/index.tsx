@@ -816,26 +816,33 @@ const UsersModal: React.FC<UsersModalProps> = ({ isOpen, onClose, users, current
                         <button type="submit">Ajouter</button>
                     </form>
                     <ul className="users-list">
-                        {users.length === 0 ? (
-                             <li className="no-users-placeholder">Aucun utilisateur.</li>
-                        ) : (
-                            users.map(user => (
-                                <li key={user.id}>
-                                    <div className="user-info-col">
-                                        <span className="user-name">{user.name}</span>
-                                        <span className="user-email">{user.email}</span>
-                                    </div>
-                                    <div className="user-role-management">
-                                        <span className={`role-badge role-${user.role}`}>{user.role}</span>
-                                        <button onClick={() => onEditUser(user)} className="edit-btn" aria-label={`Modifier ${user.name}`} title="Modifier"><EditIcon /></button>
-                                        {user.id !== currentUser.id && (
-                                            <button onClick={() => onDeleteUser(user.id)} className="delete-btn" aria-label={`Supprimer ${user.name}`} title="Supprimer"><DeleteIcon /></button>
-                                        )}
-                                    </div>
-                                </li>
-                            ))
-                        )}
-                    </ul>
+    {users.length === 0 ? (
+        <li className="no-users-placeholder">Aucun utilisateur.</li>
+    ) : (
+        // FIX: The temporary variable in the map is renamed to 'listUser' to avoid confusion.
+        users.map(listUser => (
+            <li key={listUser.id}>
+                <div className="user-info-col">
+                    <span className="user-name">{listUser.name}</span>
+                    <span className="user-email">{listUser.email}</span>
+                </div>
+                <div className="user-role-management">
+                    <span className={`role-badge role-${listUser.role}`}>{listUser.role}</span>
+                    <button onClick={() => handleEditUser(listUser)} className="edit-btn" aria-label={`Modifier ${listUser.name}`} title="Modifier"><EditIcon /></button>
+                    
+                    {/* 
+                      FIX: This now correctly compares the user from the list ('listUser.id') 
+                      with the logged-in user from the App's props ('user.id').
+                    */}
+                    {listUser.id !== user.id && (
+                        <button onClick={() => handleDeleteUser(listUser.id)} className="delete-btn" aria-label={`Supprimer ${listUser.name}`} title="Supprimer"><DeleteIcon /></button>
+                    )}
+                </div>
+            </li>
+        ))
+    )}
+</ul>
+
                 </div>
             </div>
         </div>
@@ -1829,6 +1836,44 @@ interface LoginScreenProps {
     
 }
 
+// PASTE THIS ENTIRE BLOCK
+const PublicHomeScreen = ({ onNavigateToLogin }) => {
+    return (
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100vh',
+            textAlign: 'center',
+            padding: '20px',
+            backgroundColor: '#f0f2f5'
+        }}>
+            <h1 style={{ color: '#1a237e', marginBottom: '16px' }}>BatiServ Logs</h1>
+            <p style={{ maxWidth: '600px', margin: '20px 0', fontSize: '1.1rem', color: '#333' }}>
+                Bienvenue sur l'application de suivi de chantier de BatiServ.
+                Connectez-vous pour accéder à vos projets et gérer vos options.
+            </p>
+            <button 
+                onClick={onNavigateToLogin}
+                style={{
+                    padding: '12px 24px',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    backgroundColor: '#3f51b5',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+            >
+                Se connecter / S'inscrire
+            </button>
+        </div>
+    );
+};
+
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onNavigateToSignup, onNavigateToRecover }) => {
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -2058,13 +2103,22 @@ const RecoverPasswordScreen: React.FC<RecoverPasswordScreenProps> = ({ onNavigat
 
 
 // --- Main Application Component ---
+// --- Main Application Component ---
 interface AppProps {
-  currentUser: User;
-  onLogout: () => void;
-  onUserUpdate: (user: User) => void;
+    user: User; // FIX: Prop is named 'user'
+    onLogout: () => void;
+    addToast: (message: string, type?: 'info' | 'success' | 'error') => void; // FIX: Prop is 'addToast'
 }
 
-const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
+const App: React.FC<AppProps> = ({ user, onLogout, addToast }) => { // FIX: Destructure 'user' and 'addToast'
+    // This guard now correctly checks the 'user' prop, which is now properly defined.
+    if (!user || !user.role) {
+        // This prevents a crash if the user object is incomplete.
+        return <SplashScreen isOpening={true} />;
+    }
+
+
+  
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [specialOptions, setSpecialOptions] = useState<SpecialOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -2085,9 +2139,6 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
   const [initialOpenOptionId, setInitialOpenOptionId] = useState<string | null>(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isSplashScreenVisible, setIsSplashScreenVisible] = useState(true);
-  const [isDoorOpening, setIsDoorOpening] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [editingSite, setEditingSite] = useState<{ customerId: string; siteId: string; name: string; info: string; files: UploadedFile[] } | null>(null);
   const [editingNotes, setEditingNotes] = useState<{ customerId: string; siteId: string; orderId: string; part: 'frames' | 'doors'; number: string; notes: string; } | null>(null);
   const [editingCustomerNotes, setEditingCustomerNotes] = useState<{ customerId: string; name: string; notes: string; } | null>(null);
@@ -2105,15 +2156,7 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
   const isAdmin = currentUser.role === 'Admin';
   const canEdit = currentUser.role === 'Admin' || currentUser.role === 'Editor';
 
-  useEffect(() => {
-    const openTimer = setTimeout(() => setIsDoorOpening(true), 500);
-    const removeTimer = setTimeout(() => setIsSplashScreenVisible(false), 2500);
-    return () => {
-        clearTimeout(openTimer);
-        clearTimeout(removeTimer);
-    };
-  }, []);
-  
+    
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -2149,15 +2192,7 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
     }
   }, [editingCustomerId]);
 
-  const addToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-  }, []);
-
-  const removeToast = useCallback((id: number) => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
+  
   // --- User Handlers ---
   const handleAddUser = async (name: string, email: string, password: string, role: User['role']) => {
     try {
@@ -2166,26 +2201,48 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
         addToast(error instanceof Error ? error.message : "Une erreur est survenue.", 'error');
     }
   };
-  const handleDeleteUser = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
+  // REPLACE your current handleDeleteUser function with this one.
+
+const handleDeleteUser = async (userId: string) => {
+    // 1. FIND the user object using the userId from the 'users' state array.
+    const userToDelete = users.find(u => u.id === userId);
+
+    // 2. ADD a guard in case the user is not found for some reason.
+    if (!userToDelete) {
+        addToast("Erreur : Utilisateur non trouvé.", "error");
+        return;
+    }
+
+    // 3. CHECK if the admin is trying to delete themselves.
+    //    (The 'user' variable here correctly refers to the logged-in user from the component's props).
+    if (userId === user.id) {
+        addToast("Vous ne pouvez pas supprimer votre propre compte.", "error");
+        return;
+    }
+
+    // 4. SHOW the confirmation dialog using the 'userToDelete' object.
     setConfirmation({
         isOpen: true,
-        title: "Supprimer l'Utilisateur",
-        message: <p className="confirmation-message">Êtes-vous sûr de vouloir supprimer les données de l'utilisateur "<strong>{user.name}</strong>" ? Cette action ne supprime pas son compte de connexion.</p>,
+        title: "Confirmer la suppression",
+        message: (
+            <span>
+                Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{userToDelete.name}</strong>? Cette action est irréversible.
+            </span>
+        ),
         onConfirm: async () => {
             try {
                 await api.deleteUser(userId);
-                setUsers(prev => prev.filter(u => u.id !== userId));
-                addToast(`Utilisateur "${user.name}" supprimé.`);
+                addToast("Utilisateur supprimé avec succès.", "success");
+                // Update the state to remove the user from the list
+                setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
             } catch (error) {
-                addToast(error instanceof Error ? error.message : "Une erreur est survenue.", 'error');
-            } finally {
-                setConfirmation(null);
+                addToast((error as Error).message, "error");
             }
+            setConfirmation(null);
         },
     });
-  };
+};
+
 
     const handleSaveUserProfile = async (userId: string, updates: Partial<{ name: string; email: string; password?: string; role: User['role'] }>) => {
         try {
@@ -2854,8 +2911,6 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
 
   return (
     <div className="app-wrapper">
-      <ToastContainer toasts={toasts} onDismiss={removeToast} />
-      {isSplashScreenVisible && <SplashScreen isOpening={isDoorOpening} />}
       <div className="app-container">
         <header className="app-header">
           <div className="header-left">
@@ -3241,65 +3296,106 @@ const App: React.FC<AppProps> = ({ currentUser, onLogout, onUserUpdate }) => {
 };
 
 // --- Auth Wrapper ---
+// DELETE your old Auth component and REPLACE it with this one.
+// DELETE your old Auth component and REPLACE it with this one.
 const Auth: React.FC = () => {
-    const [currentUser, setCurrentUser] = useState<User | null>(() => api.getCurrentUser());
-    const [isAuthLoading, setIsAuthLoading] = useState(true);
-    const [authScreen, setAuthScreen] = useState<'login' | 'signup' | 'recover'>('login');
-    const [toast, addToast] = useState('');
+    const [toasts, setToasts] = useState<any[]>([]);
+    // 1. ADD a loading state, initialized to true.
+    const [isLoading, setIsLoading] = useState(true);
+    // 2. The user is unknown (null) until the auth check is complete.
+    const [user, setUser] = useState<User | null>(null); 
+    const [authScreen, setAuthScreen] = useState('home');
 
-    useEffect(() => {
-        // This effect only runs once to hide the initial loader.
-        // The initial state already checks sessionStorage.
-        setIsAuthLoading(false);
-    }, []);
-
-    const handleLoginSuccess = (user: User) => {
-        setCurrentUser(user);
+    const addToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => removeToast(id), 5000);
     };
 
-    const handleUserUpdate = (user: User) => {
-        setCurrentUser(user);
-        // Also update sessionStorage so the change persists on refresh
-        try {
-            sessionStorage.setItem(api.CURRENT_USER_KEY, JSON.stringify(user));
-        } catch (e) {
-            console.error("Failed to update user in sessionStorage", e);
-        }
+    const removeToast = (id: number) => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+    };
+
+    useEffect(() => {
+        // onAuthStateChanged will tell us the user's status.
+        const unsubscribe = api.onAuthStateChanged((user) => {
+            setUser(user); // Set the user (or null if logged out)
+            // 3. SET loading to false now that we have a definitive answer.
+            setIsLoading(false); 
+        });
+        // This cleans up the listener when the component is removed.
+        return () => unsubscribe();
+    }, []);
+
+    const handleLoginSuccess = (loggedInUser: User) => {
+        setUser(loggedInUser);
+        addToast("Connexion réussie !", "success");
+    };
+    
+    const handleSignupSuccess = () => {
+        addToast("Inscription réussie ! Veuillez vérifier votre e-mail.", "success");
+        setAuthScreen('login');
     };
 
     const handleLogout = async () => {
-        await api.logout();
-        setCurrentUser(null);
+        try {
+            // Calling logout will automatically trigger our onAuthStateChanged listener,
+            // which will then set the user to null and show the home screen.
+            await api.logout();
+            addToast("Vous avez été déconnecté.", "success");
+        } catch (error) {
+            addToast("Erreur lors de la déconnexion.", "error");
+        }
+    };
+    
+    // 4. NEW RENDER LOGIC: Show a splash screen while we check auth.
+    if (isLoading) {
+        // You have a SplashScreen component, let's use it!
+        // We set isOpening to true to show the animation.
+        return <SplashScreen isOpening={true} />;
+    }
+    
+    // If loading is finished and we have a user, show the main app.
+    if (user) {
+        return (
+            <>
+                <ToastContainer toasts={toasts} removeToast={removeToast} />
+                <App user={user} onLogout={handleLogout} addToast={addToast} />
+            </>
+        );
+    }
+    
+    // If loading is finished and there's no user, show the correct auth screen.
+    const renderAuthScreen = () => {
+        switch (authScreen) {
+            case 'home':
+                return <PublicHomeScreen onNavigateToLogin={() => setAuthScreen('login')} />;
+            case 'signup':
+                return <SignUpScreen
+                    onNavigateToLogin={() => setAuthScreen('login')} 
+                    onSignupSuccess={handleSignupSuccess}
+                />;
+            case 'recover':
+                return <RecoverPasswordScreen onNavigateToLogin={() => setAuthScreen('login')} />;
+            case 'login':
+            default:
+                return <LoginScreen 
+                    onLoginSuccess={handleLoginSuccess}
+                    onNavigateToSignup={() => setAuthScreen('signup')}
+                    onNavigateToRecover={() => setAuthScreen('recover')}
+                />;
+        }
     };
 
-    if (isAuthLoading) {
-        return <Loader />;
-    }
-
-    if (currentUser) {
-        return <App currentUser={currentUser} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />
-    }
-
-    switch (authScreen) {
-        case 'signup':
-            return <SignUpScreen 
-                onNavigateToLogin={() => setAuthScreen('login')} 
-                onSignupSuccess={() => {
-                    // In a real app you might show a toast. Here we just switch screens.
-                    setAuthScreen('login');
-                }} 
-            />;
-        case 'recover':
-            return <RecoverPasswordScreen onNavigateToLogin={() => setAuthScreen('login')} />;
-        case 'login':
-        default:
-            return <LoginScreen 
-                onLoginSuccess={handleLoginSuccess}
-                onNavigateToSignup={() => setAuthScreen('signup')}
-                onNavigateToRecover={() => setAuthScreen('recover')}
-            />
-    }
+    return (
+        <>
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
+            {renderAuthScreen()}
+        </>
+    );
 };
+
+
 
 
 const container = document.getElementById('root');

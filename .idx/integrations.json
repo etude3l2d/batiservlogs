@@ -1,3 +1,6 @@
 {
-  "firebase_hosting": {}
+  "firebase_hosting": {
+    "deploymentHostingUrl": "https://suivi-de-chantier-644203-43745.web.app"
+  },
+  "cloud_run_deploy": {}
 }

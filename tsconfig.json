@@ -21,11 +21,9 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
-    },
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    }
   },
-  "include": ["index.tsx", "apiService.ts", "firebase.config.ts", ".env.local"]
+  "files": ["src/index.tsx", "src/apiService.ts", "src/firebase.config.ts"]
 }
