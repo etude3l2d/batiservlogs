@@ -643,7 +643,7 @@ const PendingOrdersModal: React.FC<PendingOrdersModalProps> = ({ orders, users, 
 
     const handleSendEmail = () => {
         const subject = "Récapitulatif des Commandes en Attente";
-
+    
         // Group orders by customer, then by site
         const groupedOrders = filteredOrders.reduce((acc, order) => {
             if (!acc[order.customerName]) {
@@ -655,29 +655,100 @@ const PendingOrdersModal: React.FC<PendingOrdersModalProps> = ({ orders, users, 
             acc[order.customerName][order.siteName].push(order);
             return acc;
         }, {} as Record<string, Record<string, PendingOrderPart[]>>);
-
-        let body = "Bonjour,\n\nVoici la liste des commandes actuellement en attente :\n\n---\n\n";
-
+    
+        let body = "Bonjour,\n\nVoici la liste des commandes actuellement en attente :\n\n";
+    
         for (const customerName in groupedOrders) {
-            body += `**Client: ${customerName}**\n\n`;
+            body += `Client: ${customerName}\n`;
+            body += "=".repeat(customerName.length + 8) + "\n\n";
+            
             for (const siteName in groupedOrders[customerName]) {
-                body += `  *Chantier: ${siteName}*\n`;
+                body += `Chantier: ${siteName}\n`;
+                body += "-".repeat(siteName.length + 10) + "\n";
+                
                 groupedOrders[customerName][siteName].forEach(order => {
                     const formattedDate = new Date(order.creationDate).toLocaleDateString('fr-FR', {
                         day: '2-digit', month: '2-digit', year: 'numeric'
                     });
                     const partName = order.part === 'frames' ? 'Huisseries' : 'Portes';
-                    body += `    - ${order.number} (${partName}) - Créée le ${formattedDate}\n`;
+                    const user = users.find(u => u.id === order.userId);
+                    const userName = user ? user.name : 'Utilisateur inconnu';
+                    
+                    body += `• ${order.number} (${partName})\n`;
+                    body += `  Créée le: ${formattedDate}\n`;
+                    body += `  Assignée à: ${userName}\n\n`;
                 });
-                body += '\n';
+                body += "\n";
             }
-            body += '---\n\n';
+            body += "\n";
         }
         
         body += "Cordialement,\nL'équipe Batiserv";
-
-        const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.location.href = mailtoLink;
+    
+        // Method 1: Try multiple approaches for better compatibility
+        const encodedSubject = encodeURIComponent(subject);
+        const encodedBody = encodeURIComponent(body);
+        
+        const mailtoLink = `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
+        
+        // Try different methods to open email client
+        let emailOpened = false;
+        
+        // Method 1: Create and click a hidden link (most reliable)
+        try {
+            const link = document.createElement('a');
+            link.href = mailtoLink;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            emailOpened = true;
+        } catch (error) {
+            console.log('Method 1 failed:', error);
+        }
+        
+        // Method 2: Use window.location.href after a delay
+        if (!emailOpened) {
+            setTimeout(() => {
+                try {
+                    window.location.href = mailtoLink;
+                    emailOpened = true;
+                } catch (error) {
+                    console.log('Method 2 failed:', error);
+                }
+            }, 100);
+        }
+        
+        // Method 3: If all else fails, offer download option
+        setTimeout(() => {
+            if (!emailOpened) {
+                const userConfirmed = window.confirm(
+                    "Impossible d'ouvrir le client email automatiquement. " +
+                    "Souhaitez-vous télécharger le rapport pour l'envoyer manuellement ?"
+                );
+                
+                if (userConfirmed) {
+                    downloadEmailReport(body, subject);
+                }
+            }
+        }, 1000);
+    };
+    
+    // Add this helper function for downloading the report
+    const downloadEmailReport = (emailBody: string, emailSubject: string) => {
+        const blob = new Blob([emailBody], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `${emailSubject.replace(/\s+/g, '_')}_${date}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        // Show confirmation message
+        alert(`Rapport téléchargé! Vous pouvez maintenant l'envoyer manuellement par email.`);
     };
     
     return (
